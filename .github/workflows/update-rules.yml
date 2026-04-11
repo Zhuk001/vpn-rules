@@ -61,12 +61,18 @@ jobs:
           # Показываем финальные файлы
           echo "=== Final files in rules/ ==="
           ls -la rules/
+     
+      - name: Commit and force push
+        run: |
+          # НАСТРАИВАЕМ GIT (это критически важно!)
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
           
-          # ПРИНУДИТЕЛЬНО ДОБАВЛЯЕМ файлы (даже если git думает, что нет изменений)
+          # Добавляем rules папку принудительно
           git add -f rules/
           
-          # Коммитим с флагом allow-empty (всегда создаём коммит)
-          git commit -m "Force update rules $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty
+          # Коммитим (всегда создаём коммит)
+          git commit -m "Force update rules $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty || echo "No changes to commit"
           
           # Force push
           git push origin master --force
