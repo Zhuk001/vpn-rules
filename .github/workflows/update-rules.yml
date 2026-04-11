@@ -31,34 +31,37 @@ jobs:
 
       - name: Convert .dat to .srs
         run: |
+          rm -rf rules_temp
           mkdir -p rules_temp
           ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
           ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
 
-      - name: Copy 4 needed files (force update)
+      - name: Force copy 4 files (always overwrite)
         run: |
           mkdir -p rules
           
+          # Принудительно перезаписываем файлы каждый раз
           cp -f rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null || echo "geoip-ru-whitelist.srs not found"
           cp -f rules_temp/geoip-ru.srs rules/ 2>/dev/null || echo "geoip-ru.srs not found"
           cp -f rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || echo "geoip-ru-blocked.srs not found"
           cp -f rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || echo "geosite-ru-blocked-all.srs not found"
           
+          echo "=== Files in rules/ after copy ==="
           ls -la rules/
 
-      - name: Cleanup
+      - name: Cleanup temporary files
         run: rm -f geosite.dat geoip.dat
 
-      - name: Force commit and push
+      - name: Force commit and push (always update)
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           
-          # Принудительно добавляем все файлы, даже если они не изменились
+          # Принудительно добавляем и коммитим каждый раз
           git add -f rules/
           
-          # Делаем коммит даже если ничего не изменилось (чтобы дата обновлялась)
-          git commit -m "Auto update VPN rules $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty || echo "Nothing to commit"
+          # Создаём коммит даже если файлы не изменились
+          git commit -m "Auto update VPN rules $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty || echo "Commit skipped"
           
           git push origin master
         env:
