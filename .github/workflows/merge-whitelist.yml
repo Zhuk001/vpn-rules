@@ -1,0 +1,44 @@
+name: Merge Whitelist
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'  # Каждые 12 часов
+  workflow_dispatch:          # Ручной запуск
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and merge whitelists
+        run: |
+          # Скачиваем три источника
+          curl -s -H "Cache-Control: no-cache" -o source1.txt "https://raw.githubusercontent.com/hxehex/russia-mobile-internet-whitelist/refs/heads/main/whitelist.txt"
+          curl -s -H "Cache-Control: no-cache" -o source2.csv "https://raw.githubusercontent.com/chebur-net/russia-mobile-whitelist/refs/heads/main/moscow-tele2/whitelist.csv"
+          curl -s -H "Cache-Control: no-cache" -o source3.csv "https://raw.githubusercontent.com/chebur-net/russia-mobile-whitelist/refs/heads/main/spb-tele2/whitelist.csv"
+          
+          # Объединяем, убираем пустые строки, комментарии, сортируем и удаляем дубликаты
+          cat source1.txt source2.csv source3.csv \
+            | grep -v '^#' \
+            | grep -v '^$' \
+            | sed 's/\r$//' \
+            | sort -u \
+            > whitelist.txt
+          
+          # Очистка
+          rm source1.txt source2.csv source3.csv
+          
+          echo "Объединено строк: $(wc -l < whitelist.txt)"
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add whitelist.txt
+          git diff --staged --quiet || git commit -m "Auto merge whitelist $(date +'%Y-%m-%d %H:%M:%S')"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
