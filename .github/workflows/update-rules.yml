@@ -1,4 +1,4 @@
-﻿name: Update VPN Rules
+name: Update VPN Rules
 
 on:
   schedule:
@@ -25,15 +25,16 @@ jobs:
         run: go install github.com/runetfreedom/geodat2srs@latest
       
       - name: Convert geosite
-        run: ~/go/bin/geodat2srs geosite -i geosite.dat -o rules/ --include ru-blocked
+        run: ~/go/bin/geodat2srs geosite -i geosite.dat -o rules/
       
       - name: Convert geoip
-        run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules/ --include ru-blocked
+        run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules/
       
-      - name: Rename files
+      - name: Rename files for app
         run: |
-          mv rules/geosite-ru-blocked.srs rules/ru-blocked-geosite.srs
-          mv rules/geoip-ru-blocked.srs rules/ru-blocked-geoip.srs
+          # Добавляем удобные имена для приложения
+          cp rules/geosite-ru-blocked.srs rules/ru-blocked-geosite.srs
+          cp rules/geoip-ru-blocked.srs rules/ru-blocked-geoip.srs
       
       - name: Cleanup
         run: rm geosite.dat geoip.dat
