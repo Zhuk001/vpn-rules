@@ -36,12 +36,12 @@ jobs:
           ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
           ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
 
-      - name: Delete old rules folder and copy fresh 4 files
+      - name: Completely delete old rules folder and create fresh one
         run: |
-          # Полностью удаляем старую папку rules
+          # ЖЁСТКО удаляем старую папку rules полностью
           rm -rf rules
           
-          # Создаём новую папку
+          # Создаём новую пустую папку
           mkdir -p rules
           
           # Копируем только нужные 4 файла
@@ -50,19 +50,20 @@ jobs:
           cp rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || echo "geoip-ru-blocked.srs not found"
           cp rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || echo "geosite-ru-blocked-all.srs not found"
           
-          echo "=== Fresh files in rules/ ==="
+          echo "=== Fresh files in rules folder ==="
           ls -la rules/
 
       - name: Cleanup
         run: rm -f geosite.dat geoip.dat
 
-      - name: Commit and push
+      - name: Force commit and push
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           
           git add -f rules/
           
+          # Всегда делаем коммит
           git commit -m "Auto update VPN rules $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty || echo "Nothing to commit"
           
           git push origin master
