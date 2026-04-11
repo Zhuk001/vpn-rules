@@ -1,66 +1,67 @@
 name: Update VPN Rules
-
 on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
-
 jobs:
   update:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: master
-
-      # === 1. НАСТРАИВАЕМ GIT ===
-      - name: Configure Git
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-
-      # === 2. ЖЁСТКО УДАЛЯЕМ ПАПКУ ИЗ GIT ===
-      - name: Remove old rules folder from Git completely
-        run: |
-          git rm -rf rules 2>/dev/null || true
-          rm -rf rules
-          git commit -m "Remove old rules folder before fresh update" --allow-empty || true
-          echo "Old rules folder removed from Git"
-
-      - name: Download latest .dat files
+     
+      - name: Download geosite.dat and geoip.dat
         run: |
           wget -O geosite.dat https://github.com/runetfreedom/russia-blocked-geosite/releases/latest/download/geosite.dat
           wget -O geoip.dat https://github.com/runetfreedom/russia-blocked-geoip/releases/latest/download/geoip.dat
-
-      - name: Setup Go + Convert
+     
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+     
+      - name: Install geodat2srs
+        run: go install github.com/runetfreedom/geodat2srs@latest
+     
+      - name: Convert rules
         run: |
-          go install github.com/runetfreedom/geodat2srs@latest
-          rm -rf rules_temp
+          # Создаём папку принудительно
           mkdir -p rules_temp
+          
+          # Конвертируем
           ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
           ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
-
-      - name: Create fresh rules folder
-        run: |
-          mkdir -p rules
-          cp rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null || true
-          cp rules_temp/geoip-ru.srs rules/ 2>/dev/null || true
-          cp rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || true
-          cp rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || true
           
+          # Показываем все сгенерированные файлы
+          echo "=== Generated files ==="
+          ls -la rules_temp/
+          
+          # Создаём папку rules
+          mkdir -p rules
+          
+          # Копируем и ПЕРЕЗАПИСЫВАЕМ нужные файлы
+          cp -f rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null && echo "✅ geoip-ru-whitelist.srs" || echo "❌ geoip-ru-whitelist.srs not found"
+          cp -f rules_temp/geoip-ru.srs rules/ 2>/dev/null && echo "✅ geoip-ru.srs" || echo "❌ geoip-ru.srs not found"
+          cp -f rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null && echo "✅ geoip-ru-blocked.srs" || echo "❌ geoip-ru-blocked.srs not found"
+          cp -f rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null && echo "✅ geosite-ru-blocked-all.srs" || echo "❌ geosite-ru-blocked-all.srs not found"
+          
+          # Удаляем временную папку
+          rm -rf rules_temp
+          
+          # Показываем результат
           echo "=== Final files in rules/ ==="
           ls -la rules/
-
-      - name: Final commit and push
+     
+      - name: Cleanup
+        run: rm -f geosite.dat geoip.dat
+     
+      - name: Commit and push
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          
-          git add -f rules/
-          git commit -m "Auto update VPN rules $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+          git add rules/
+          git commit -m "Auto update rules $(date +'%Y-%m-%d %H:%M:%S')" || exit 0
           git push origin master --force
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
