@@ -8,6 +8,8 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       
@@ -30,23 +32,15 @@ jobs:
       - name: Convert geoip
         run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules/
       
-      - name: Keep only needed files
-        run: |
-          # Оставляем только нужные файлы
-          cd rules
-          # Удаляем всё, кроме нужных
-          find . -type f ! -name "geoip-ru-blocked.srs" \
-                       ! -name "geosite-ru-blocked.srs" \
-                       ! -name "geosite-antifilter-download.srs" \
-                       ! -name "geosite-ru-blocked-all.srs" -delete
-      
       - name: Cleanup
         run: rm geosite.dat geoip.dat
       
       - name: Commit and push
         run: |
           git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
+          git config.user.email "actions@github.com"
           git add rules/
           git commit -m "Auto update rules $(date +'%Y-%m-%d %H:%M:%S')" || exit 0
           git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
