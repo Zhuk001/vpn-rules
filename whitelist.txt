@@ -1,3 +1,13 @@
+yandex.ru
+*.yandex.ru
+yandex.com
+*.yandex.com
+yandex.net
+*.yandex.net
+ya.ru
+*.ya.ru
+dzen.ru
+*.dzen.ru
 00.img.avito.st
 01.img.avito.st
 02.img.avito.st
