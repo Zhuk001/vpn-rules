@@ -36,32 +36,32 @@ jobs:
           ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
           ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
 
-      - name: Force copy 4 files (always overwrite)
+      - name: Force overwrite files + touch (обновляем timestamp)
         run: |
           mkdir -p rules
           
-          # Принудительно перезаписываем файлы каждый раз
-          cp -f rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null || echo "geoip-ru-whitelist.srs not found"
-          cp -f rules_temp/geoip-ru.srs rules/ 2>/dev/null || echo "geoip-ru.srs not found"
-          cp -f rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || echo "geoip-ru-blocked.srs not found"
-          cp -f rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || echo "geosite-ru-blocked-all.srs not found"
+          # Принудительно копируем и сразу обновляем дату модификации
+          cp -f rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null && touch rules/geoip-ru-whitelist.srs || echo "geoip-ru-whitelist.srs not found"
+          cp -f rules_temp/geoip-ru.srs rules/ 2>/dev/null && touch rules/geoip-ru.srs || echo "geoip-ru.srs not found"
+          cp -f rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null && touch rules/geoip-ru-blocked.srs || echo "geoip-ru-blocked.srs not found"
+          cp -f rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null && touch rules/geosite-ru-blocked-all.srs || echo "geosite-ru-blocked-all.srs not found"
           
-          echo "=== Files in rules/ after copy ==="
+          echo "=== Files after force copy ==="
           ls -la rules/
 
-      - name: Cleanup temporary files
+      - name: Cleanup
         run: rm -f geosite.dat geoip.dat
 
-      - name: Force commit and push (always update)
+      - name: Force commit and push every time
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           
-          # Принудительно добавляем и коммитим каждый раз
+          # Принудительно добавляем все файлы
           git add -f rules/
           
-          # Создаём коммит даже если файлы не изменились
-          git commit -m "Auto update VPN rules $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty || echo "Commit skipped"
+          # Всегда создаём новый коммит (даже если файлы идентичны)
+          git commit -m "Auto update VPN rules $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty || echo "Nothing to commit (should not happen)"
           
           git push origin master
         env:
