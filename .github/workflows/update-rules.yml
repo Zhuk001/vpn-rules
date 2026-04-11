@@ -16,12 +16,12 @@ jobs:
         with:
           ref: master
 
-      # === ЖЁСТКОЕ УДАЛЕНИЕ ПАПКИ RULES ИЗ GIT ===
-      - name: Completely remove old rules folder from Git
+      # === 1. ЖЁСТКО УДАЛЯЕМ ПАПКУ ИЗ GIT ===
+      - name: Remove old rules folder from Git completely
         run: |
-          rm -rf rules
           git rm -rf rules 2>/dev/null || true
-          git commit -m "Remove old rules folder before update" --allow-empty || true
+          rm -rf rules
+          git commit -m "Remove old rules folder before fresh update" --allow-empty || true
           echo "Old rules folder removed from Git"
 
       - name: Download latest .dat files
@@ -29,44 +29,31 @@ jobs:
           wget -O geosite.dat https://github.com/runetfreedom/russia-blocked-geosite/releases/latest/download/geosite.dat
           wget -O geoip.dat https://github.com/runetfreedom/russia-blocked-geoip/releases/latest/download/geoip.dat
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.21'
-
-      - name: Install geodat2srs
-        run: go install github.com/runetfreedom/geodat2srs@latest
-
-      - name: Convert .dat to .srs
+      - name: Setup Go + Convert
         run: |
+          go install github.com/runetfreedom/geodat2srs@latest
           rm -rf rules_temp
           mkdir -p rules_temp
           ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
           ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
 
-      - name: Create fresh rules folder and copy files
+      - name: Create fresh rules folder
         run: |
           mkdir -p rules
-          
-          cp rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null || echo "geoip-ru-whitelist.srs not found"
-          cp rules_temp/geoip-ru.srs rules/ 2>/dev/null || echo "geoip-ru.srs not found"
-          cp rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || echo "geoip-ru-blocked.srs not found"
-          cp rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || echo "geosite-ru-blocked-all.srs not found"
+          cp rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null || true
+          cp rules_temp/geoip-ru.srs rules/ 2>/dev/null || true
+          cp rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || true
+          cp rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || true
           
           ls -la rules/
 
-      - name: Cleanup
-        run: rm -f geosite.dat geoip.dat
-
-      - name: Commit and push fresh rules
+      - name: Final commit and push
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           
           git add -f rules/
-          
-          git commit -m "Auto update VPN rules $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty || echo "Nothing to commit"
-          
+          git commit -m "Auto update VPN rules $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty || echo "No changes"
           git push origin master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
