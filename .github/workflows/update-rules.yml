@@ -27,10 +27,22 @@ jobs:
         run: go install github.com/runetfreedom/geodat2srs@latest
       
       - name: Convert geosite
-        run: ~/go/bin/geodat2srs geosite -i geosite.dat -o rules/
+        run: ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
       
       - name: Convert geoip
-        run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules/
+        run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
+      
+      - name: Copy only 4 needed files
+        run: |
+          # Создаём папку rules если её нет
+          mkdir -p rules
+          # Копируем только нужные файлы
+          cp rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || echo "geoip-ru-blocked.srs not found"
+          cp rules_temp/geosite-ru-blocked.srs rules/ 2>/dev/null || echo "geosite-ru-blocked.srs not found"
+          cp rules_temp/geosite-antifilter-download.srs rules/ 2>/dev/null || echo "geosite-antifilter-download.srs not found"
+          cp rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || echo "geosite-ru-blocked-all.srs not found"
+          # Удаляем временную папку
+          rm -rf rules_temp
       
       - name: Cleanup
         run: rm geosite.dat geoip.dat
@@ -40,7 +52,7 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add rules/
-          git commit -m "Auto update rules" || exit 0
+          git commit -m "Auto update rules $(date +'%Y-%m-%d %H:%M:%S')" || exit 0
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
