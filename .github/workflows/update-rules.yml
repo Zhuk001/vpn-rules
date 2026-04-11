@@ -1,0 +1,47 @@
+﻿name: Update VPN Rules
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download geosite.dat
+        run: |
+          wget -O geosite.dat https://github.com/runetfreedom/russia-blocked-geosite/releases/latest/download/geosite.dat
+          wget -O geoip.dat https://github.com/runetfreedom/russia-blocked-geoip/releases/latest/download/geoip.dat
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Install geodat2srs
+        run: go install github.com/runetfreedom/geodat2srs@latest
+      
+      - name: Convert geosite
+        run: ~/go/bin/geodat2srs geosite -i geosite.dat -o rules/ --include ru-blocked
+      
+      - name: Convert geoip
+        run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules/ --include ru-blocked
+      
+      - name: Rename files
+        run: |
+          mv rules/geosite-ru-blocked.srs rules/ru-blocked-geosite.srs
+          mv rules/geoip-ru-blocked.srs rules/ru-blocked-geoip.srs
+      
+      - name: Cleanup
+        run: rm geosite.dat geoip.dat
+      
+      - name: Commit and push
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add rules/
+          git commit -m "Auto update rules $(date +'%Y-%m-%d %H:%M:%S')" || exit 0
+          git push
