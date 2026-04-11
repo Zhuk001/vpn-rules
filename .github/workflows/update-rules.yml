@@ -36,21 +36,23 @@ jobs:
           ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
           ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
 
-      - name: Completely delete old rules folder and create fresh one
+      - name: Delete old rules and create fresh with timestamp
         run: |
-          # ЖЁСТКО удаляем старую папку rules полностью
           rm -rf rules
-          
-          # Создаём новую пустую папку
           mkdir -p rules
           
-          # Копируем только нужные 4 файла
-          cp rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null || echo "geoip-ru-whitelist.srs not found"
-          cp rules_temp/geoip-ru.srs rules/ 2>/dev/null || echo "geoip-ru.srs not found"
-          cp rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || echo "geoip-ru-blocked.srs not found"
-          cp rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || echo "geosite-ru-blocked-all.srs not found"
+          TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
           
-          echo "=== Fresh files in rules folder ==="
+          for file in geoip-ru-whitelist.srs geoip-ru.srs geoip-ru-blocked.srs geosite-ru-blocked-all.srs; do
+            if [ -f "rules_temp/$file" ]; then
+              cp "rules_temp/$file" "rules/$file"
+              echo "# Updated: $TIMESTAMP" >> "rules/$file"
+              echo "Processed $file with timestamp"
+            else
+              echo "$file not found"
+            fi
+          done
+          
           ls -la rules/
 
       - name: Cleanup
@@ -63,7 +65,6 @@ jobs:
           
           git add -f rules/
           
-          # Всегда делаем коммит
           git commit -m "Auto update VPN rules $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty || echo "Nothing to commit"
           
           git push origin master
