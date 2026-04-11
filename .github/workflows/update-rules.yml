@@ -30,11 +30,15 @@ jobs:
       - name: Convert geoip
         run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules/
       
-      - name: Rename files for app
+      - name: Keep only needed files
         run: |
-          # Добавляем удобные имена для приложения
-          cp rules/geosite-ru-blocked.srs rules/ru-blocked-geosite.srs
-          cp rules/geoip-ru-blocked.srs rules/ru-blocked-geoip.srs
+          # Оставляем только нужные файлы
+          cd rules
+          # Удаляем всё, кроме нужных
+          find . -type f ! -name "geoip-ru-blocked.srs" \
+                       ! -name "geosite-ru-blocked.srs" \
+                       ! -name "geosite-antifilter-download.srs" \
+                       ! -name "geosite-ru-blocked-all.srs" -delete
       
       - name: Cleanup
         run: rm geosite.dat geoip.dat
