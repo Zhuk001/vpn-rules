@@ -1,10 +1,8 @@
 name: Update VPN Rules
-
 on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
-
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -12,41 +10,43 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Download geosite.dat
+     
+      - name: Download geosite.dat and geoip.dat
         run: |
           wget -O geosite.dat https://github.com/runetfreedom/russia-blocked-geosite/releases/latest/download/geosite.dat
           wget -O geoip.dat https://github.com/runetfreedom/russia-blocked-geoip/releases/latest/download/geoip.dat
-      
+     
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      
+     
       - name: Install geodat2srs
         run: go install github.com/runetfreedom/geodat2srs@latest
-      
-      - name: Convert geosite
-        run: ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
-      
-      - name: Convert geoip
-        run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
-      
-      - name: Copy only 4 needed files
+     
+      - name: Convert all geosite rules
+        run: ~/go/bin/geodat2srs geosite -i geosite.dat -o rules/
+     
+      - name: Convert all geoip rules
+        run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules/
+     
+      - name: Clean up unnecessary files
         run: |
-          # Создаём папку rules если её нет
-          mkdir -p rules
-          # Копируем только нужные файлы
-          cp rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || echo "geoip-ru-blocked.srs not found"
-          cp rules_temp/geosite-ru-blocked.srs rules/ 2>/dev/null || echo "geosite-ru-blocked.srs not found"
-          cp rules_temp/geosite-antifilter-download.srs rules/ 2>/dev/null || echo "geosite-antifilter-download.srs not found"
-          cp rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || echo "geosite-ru-blocked-all.srs not found"
-          # Удаляем временную папку
-          rm -rf rules_temp
-      
-      - name: Cleanup
+          cd rules
+          # Удаляем всё, кроме нужных нам файлов
+          find . -type f ! -name "geoip-ru-whitelist.srs" \
+                         ! -name "geoip-ru.srs" \
+                         ! -name "geoip-ru-blocked.srs" \
+                         ! -name "geosite-ru-blocked-all.srs" \
+                         -delete
+          cd ..
+     
+      - name: List final files
+        run: ls -la rules/
+     
+      - name: Cleanup source files
         run: rm geosite.dat geoip.dat
-      
+     
       - name: Commit and push
         run: |
           git config user.name "GitHub Actions"
