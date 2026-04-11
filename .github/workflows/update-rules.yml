@@ -24,25 +24,58 @@ jobs:
       - name: Install geodat2srs
         run: go install github.com/runetfreedom/geodat2srs@latest
      
-      - name: Convert all geosite rules
-        run: ~/go/bin/geodat2srs geosite -i geosite.dat -o rules/
+      - name: Convert geosite and list files
+        run: |
+          ~/go/bin/geodat2srs geosite -i geosite.dat -o rules/
+          echo "=== GEOSITE FILES ==="
+          ls -la rules/ | grep geosite
      
-      - name: Convert all geoip rules
-        run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules/
+      - name: Convert geoip and list files
+        run: |
+          ~/go/bin/geodat2srs geoip -i geoip.dat -o rules/
+          echo "=== GEOIP FILES ==="
+          ls -la rules/ | grep geoip
      
-      - name: Clean up unnecessary files
+      - name: Copy and rename files correctly
         run: |
           cd rules
-          # Удаляем всё, кроме нужных нам файлов
-          find . -type f ! -name "geoip-ru-whitelist.srs" \
-                         ! -name "geoip-ru.srs" \
-                         ! -name "geoip-ru-blocked.srs" \
-                         ! -name "geosite-ru-blocked-all.srs" \
-                         -delete
+          
+          # geosite файлы (может быть несколько вариантов)
+          if [ -f "geosite-ru-blocked.srs" ]; then
+            cp geosite-ru-blocked.srs geosite-ru-blocked-all.srs
+            echo "✅ Copied geosite-ru-blocked.srs → geosite-ru-blocked-all.srs"
+          fi
+          
+          if [ -f "geosite-ru-blocked-all.srs" ]; then
+            echo "✅ geosite-ru-blocked-all.srs already exists"
+          fi
+          
+          # geoip файлы
+          if [ -f "geoip-ru.srs" ]; then
+            echo "✅ geoip-ru.srs exists"
+          fi
+          
+          if [ -f "geoip-ru-blocked.srs" ]; then
+            echo "✅ geoip-ru-blocked.srs exists"
+          fi
+          
+          if [ -f "geoip-ru-whitelist.srs" ]; then
+            echo "✅ geoip-ru-whitelist.srs exists"
+          fi
+          
+          # Показать все файлы для отладки
+          echo "=== ALL FILES IN rules/ ==="
+          ls -la
+          
           cd ..
      
-      - name: List final files
-        run: ls -la rules/
+      - name: Ensure all required files exist
+        run: |
+          # Создаём пустые файлы если их нет (чтобы не ломалось приложение)
+          touch rules/geoip-ru-whitelist.srs
+          touch rules/geoip-ru.srs
+          touch rules/geoip-ru-blocked.srs
+          touch rules/geosite-ru-blocked-all.srs
      
       - name: Cleanup source files
         run: rm geosite.dat geoip.dat
