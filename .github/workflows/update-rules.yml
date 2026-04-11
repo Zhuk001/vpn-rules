@@ -37,24 +37,22 @@ jobs:
           echo "=== Generated files ==="
           ls -la rules_new/
           
-          # Удаляем старую папку rules и создаём новую
+          # ПРИНУДИТЕЛЬНО удаляем старую папку rules и создаём новую
           rm -rf rules
           mkdir -p rules
           
-          # Копируем только 4 нужных файла
-          cp rules_new/geoip-ru-whitelist.srs rules/ 2>/dev/null && echo "✅ geoip-ru-whitelist.srs" || echo "❌ geoip-ru-whitelist.srs not found"
-          cp rules_new/geoip-ru.srs rules/ 2>/dev/null && echo "✅ geoip-ru.srs" || echo "❌ geoip-ru.srs not found"
-          cp rules_new/geoip-ru-blocked.srs rules/ 2>/dev/null && echo "✅ geoip-ru-blocked.srs" || echo "❌ geoip-ru-blocked.srs not found"
+          # Копируем 4 нужных файла
+          cp -f rules_new/geoip-ru-whitelist.srs rules/ 2>/dev/null && echo "✅ geoip-ru-whitelist.srs" || echo "❌ geoip-ru-whitelist.srs not found"
+          cp -f rules_new/geoip-ru.srs rules/ 2>/dev/null && echo "✅ geoip-ru.srs" || echo "❌ geoip-ru.srs not found"
+          cp -f rules_new/geoip-ru-blocked.srs rules/ 2>/dev/null && echo "✅ geoip-ru-blocked.srs" || echo "❌ geoip-ru-blocked.srs not found"
           
-          # geosite файл (может быть с разными именами)
+          # geosite файл
           if [ -f "rules_new/geosite-ru-blocked-all.srs" ]; then
-            cp rules_new/geosite-ru-blocked-all.srs rules/
+            cp -f rules_new/geosite-ru-blocked-all.srs rules/
             echo "✅ geosite-ru-blocked-all.srs"
           elif [ -f "rules_new/geosite-ru-blocked.srs" ]; then
-            cp rules_new/geosite-ru-blocked.srs rules/geosite-ru-blocked-all.srs
+            cp -f rules_new/geosite-ru-blocked.srs rules/geosite-ru-blocked-all.srs
             echo "✅ geosite-ru-blocked.srs → geosite-ru-blocked-all.srs"
-          else
-            echo "❌ geosite-ru-blocked-all.srs not found"
           fi
           
           # Удаляем временные файлы
@@ -63,19 +61,14 @@ jobs:
           # Показываем финальные файлы
           echo "=== Final files in rules/ ==="
           ls -la rules/
-     
-      - name: Commit and force push
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
           
-          # Добавляем rules папку
-          git add rules/
+          # ПРИНУДИТЕЛЬНО ДОБАВЛЯЕМ файлы (даже если git думает, что нет изменений)
+          git add -f rules/
           
-          # Всегда коммитим (даже если нет изменений - force push перезапишет)
-          git commit -m "Update rules $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit, but will force push anyway"
+          # Коммитим с флагом allow-empty (всегда создаём коммит)
+          git commit -m "Force update rules $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty
           
-          # Force push - перезаписываем удалённую ветку
+          # Force push
           git push origin master --force
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
