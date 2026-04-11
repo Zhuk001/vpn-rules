@@ -1,59 +1,81 @@
 name: Update VPN Rules
-
 on:
   schedule:
-    - cron: '0 3 * * *'      # каждый день в 3:00 UTC
+    - cron: '0 3 * * *'
   workflow_dispatch:
-
 jobs:
   update:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download latest dat files
+     
+      - name: Download source files
         run: |
-          wget -O geoip.dat https://github.com/runetfreedom/russia-blocked-geoip/releases/latest/download/geoip.dat
           wget -O geosite.dat https://github.com/runetfreedom/russia-blocked-geosite/releases/latest/download/geosite.dat
-
+          wget -O geoip.dat https://github.com/runetfreedom/russia-blocked-geoip/releases/latest/download/geoip.dat
+     
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-
+     
       - name: Install geodat2srs
         run: go install github.com/runetfreedom/geodat2srs@latest
-
-      - name: Convert to sing-box .srs
+     
+      - name: Convert rules
         run: |
-          mkdir -p rules_temp
-          ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/ --prefix "geoip-"
-          ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/ --prefix "geosite-"
-
-      - name: Copy needed files
-        run: |
+          # Создаём временную папку
+          mkdir -p rules_new
+          
+          # Конвертируем
+          ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_new/
+          ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_new/
+          
+          # Показываем все сгенерированные файлы
+          echo "=== Generated files ==="
+          ls -la rules_new/
+          
+          # Удаляем старую папку rules и создаём новую
+          rm -rf rules
           mkdir -p rules
           
-          # Основные файлы
-          cp rules_temp/geoip-ru.srs rules/ 2>/dev/null || echo "geoip-ru.srs not found"
-          cp rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || echo "geoip-ru-blocked.srs not found"
+          # Копируем только 4 нужных файла
+          cp rules_new/geoip-ru-whitelist.srs rules/ 2>/dev/null && echo "✅ geoip-ru-whitelist.srs" || echo "❌ geoip-ru-whitelist.srs not found"
+          cp rules_new/geoip-ru.srs rules/ 2>/dev/null && echo "✅ geoip-ru.srs" || echo "❌ geoip-ru.srs not found"
+          cp rules_new/geoip-ru-blocked.srs rules/ 2>/dev/null && echo "✅ geoip-ru-blocked.srs" || echo "❌ geoip-ru-blocked.srs not found"
           
-          # Дополнительно (если есть в датах)
-          cp rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null || echo "geoip-ru-whitelist.srs not found"
-          cp rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || echo "geosite-ru-blocked-all.srs not found"
+          # geosite файл (может быть с разными именами)
+          if [ -f "rules_new/geosite-ru-blocked-all.srs" ]; then
+            cp rules_new/geosite-ru-blocked-all.srs rules/
+            echo "✅ geosite-ru-blocked-all.srs"
+          elif [ -f "rules_new/geosite-ru-blocked.srs" ]; then
+            cp rules_new/geosite-ru-blocked.srs rules/geosite-ru-blocked-all.srs
+            echo "✅ geosite-ru-blocked.srs → geosite-ru-blocked-all.srs"
+          else
+            echo "❌ geosite-ru-blocked-all.srs not found"
+          fi
           
           # Удаляем временные файлы
-          rm -rf rules_temp geoip.dat geosite.dat
-
-      - name: Commit and push
+          rm -rf rules_new geosite.dat geoip.dat
+          
+          # Показываем финальные файлы
+          echo "=== Final files in rules/ ==="
+          ls -la rules/
+     
+      - name: Commit and force push
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
+          
+          # Добавляем rules папку
           git add rules/
-          git commit -m "Auto update rules $(date +'%Y-%m-%d %H:%M:%S')" || exit 0
-          git push
+          
+          # Всегда коммитим (даже если нет изменений - force push перезапишет)
+          git commit -m "Update rules $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit, but will force push anyway"
+          
+          # Force push - перезаписываем удалённую ветку
+          git push origin master --force
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
