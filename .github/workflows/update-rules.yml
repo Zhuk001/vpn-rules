@@ -1,58 +1,68 @@
 name: Update VPN Rules
+
 on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
+
 jobs:
   update:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@v4
-     
-      - name: Download geosite.dat and geoip.dat
+        with:
+          fetch-depth: 0
+          ref: master   # явно указываем ветку master
+
+      - name: Download latest .dat files
         run: |
           wget -O geosite.dat https://github.com/runetfreedom/russia-blocked-geosite/releases/latest/download/geosite.dat
           wget -O geoip.dat https://github.com/runetfreedom/russia-blocked-geoip/releases/latest/download/geoip.dat
-     
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-     
+
       - name: Install geodat2srs
         run: go install github.com/runetfreedom/geodat2srs@latest
-     
-      - name: Convert geosite
-        run: ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
-     
-      - name: Convert geoip
-        run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
-     
+
+      - name: Convert .dat to .srs
+        run: |
+          mkdir -p rules_temp
+          ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
+          ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
+
       - name: Copy only 4 needed files
         run: |
-          # Создаём папку rules если её нет
           mkdir -p rules
           
-          # Копируем ТОЛЬКО 4 нужных файла (правильные имена!)
           cp rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null || echo "geoip-ru-whitelist.srs not found"
           cp rules_temp/geoip-ru.srs rules/ 2>/dev/null || echo "geoip-ru.srs not found"
           cp rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || echo "geoip-ru-blocked.srs not found"
           cp rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || echo "geosite-ru-blocked-all.srs not found"
           
-          # Удаляем временную папку
-          rm -rf rules_temp
-     
+          ls -la rules/   # покажет, какие файлы реально скопировались
+
       - name: Cleanup
-        run: rm geosite.dat geoip.dat
-     
-      - name: Commit and push
+        run: rm -f geosite.dat geoip.dat
+
+      - name: Commit and push (force update)
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add rules/
-          git commit -m "Auto update rules $(date +'%Y-%m-%d %H:%M:%S')" || exit 0
-          git push origin master --force
+          
+          git add -f rules/          # -f принудительно добавляет файлы
+          
+          if git diff --cached --quiet; then
+            echo "Нет изменений в правилах — коммит пропущен"
+            exit 0
+          fi
+          
+          git commit -m "Auto update VPN rules $(date +'%Y-%m-%d %H:%M:%S')"
+          git push origin master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
