@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
      
-      - name: Download source files
+      - name: Download geosite.dat and geoip.dat
         run: |
           wget -O geosite.dat https://github.com/runetfreedom/russia-blocked-geosite/releases/latest/download/geosite.dat
           wget -O geoip.dat https://github.com/runetfreedom/russia-blocked-geoip/releases/latest/download/geoip.dat
@@ -24,61 +24,35 @@ jobs:
       - name: Install geodat2srs
         run: go install github.com/runetfreedom/geodat2srs@latest
      
-      - name: Convert and copy files
+      - name: Convert geosite
+        run: ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
+     
+      - name: Convert geoip
+        run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
+     
+      - name: Copy only 4 needed files
         run: |
-          # Конвертируем
-          mkdir -p rules_temp
-          ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
-          ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
-          
-          # Очищаем rules
-          rm -rf rules
+          # Создаём папку rules если её нет
           mkdir -p rules
           
-          # Копируем 4 файла
-          cp -f rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null
-          cp -f rules_temp/geoip-ru.srs rules/ 2>/dev/null
-          cp -f rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null
+          # Копируем ТОЛЬКО 4 нужных файла (правильные имена!)
+          cp rules_temp/geoip-ru-whitelist.srs rules/ 2>/dev/null || echo "geoip-ru-whitelist.srs not found"
+          cp rules_temp/geoip-ru.srs rules/ 2>/dev/null || echo "geoip-ru.srs not found"
+          cp rules_temp/geoip-ru-blocked.srs rules/ 2>/dev/null || echo "geoip-ru-blocked.srs not found"
+          cp rules_temp/geosite-ru-blocked-all.srs rules/ 2>/dev/null || echo "geosite-ru-blocked-all.srs not found"
           
-          if [ -f "rules_temp/geosite-ru-blocked-all.srs" ]; then
-            cp -f rules_temp/geosite-ru-blocked-all.srs rules/
-          elif [ -f "rules_temp/geosite-ru-blocked.srs" ]; then
-            cp -f rules_temp/geosite-ru-blocked.srs rules/geosite-ru-blocked-all.srs
-          fi
-          
-          # Удаляем всё лишнее из rules
-          cd rules
-          for f in *.srs; do
-            case "$f" in
-              "geoip-ru-whitelist.srs"|"geoip-ru.srs"|"geoip-ru-blocked.srs"|"geosite-ru-blocked-all.srs")
-                echo "✅ Keeping $f"
-                ;;
-              *)
-                echo "❌ Deleting $f"
-                rm -f "$f"
-                ;;
-            esac
-          done
-          cd ..
-          
-          # Показываем результат
-          echo "=== FINAL FILES ==="
-          ls -la rules/
-          
-          rm -rf rules_temp geosite.dat geoip.dat
+          # Удаляем временную папку
+          rm -rf rules_temp
      
-      - name: Push to repository
+      - name: Cleanup
+        run: rm geosite.dat geoip.dat
+     
+      - name: Commit and push
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          
-          # Добавляем файлы
           git add rules/
-          
-          # Коммитим
-          git commit -m "Update rules $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes"
-          
-          # ПУШИМ (это самое важное!)
+          git commit -m "Auto update rules $(date +'%Y-%m-%d %H:%M:%S')" || exit 0
           git push origin master --force
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
