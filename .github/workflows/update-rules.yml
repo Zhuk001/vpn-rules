@@ -10,10 +10,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
      
-      - name: Download geosite.dat and geoip.dat
+      - name: Download source files
         run: |
           wget -O geosite.dat https://github.com/runetfreedom/russia-blocked-geosite/releases/latest/download/geosite.dat
           wget -O geoip.dat https://github.com/runetfreedom/russia-blocked-geoip/releases/latest/download/geoip.dat
@@ -26,94 +24,36 @@ jobs:
       - name: Install geodat2srs
         run: go install github.com/runetfreedom/geodat2srs@latest
      
-      - name: Convert geosite
-        run: ~/go/bin/geodat2srs geosite -i geosite.dat -o rules_temp/
-     
-      - name: Convert geoip
-        run: ~/go/bin/geodat2srs geoip -i geoip.dat -o rules_temp/
-     
-      - name: List all generated files (for debugging)
+      - name: Convert and copy files
         run: |
-          echo "=== ALL GENERATED FILES ==="
-          ls -la rules_temp/
-     
-      - name: Copy ONLY the 4 required files
-        run: |
-          # Создаём чистую папку rules
-          rm -rf rules
-          mkdir -p rules
+          # Конвертируем
+          ~/go/bin/geodat2srs geosite -i geosite.dat -o rules/
+          ~/go/bin/geodat2srs geoip -i geoip.dat -o rules/
           
-          # Копируем ТОЛЬКО нужные файлы
-          # geoip-ru-whitelist.srs
-          if [ -f "rules_temp/geoip-ru-whitelist.srs" ]; then
-            cp rules_temp/geoip-ru-whitelist.srs rules/
-            echo "✅ Copied geoip-ru-whitelist.srs"
-          else
-            echo "❌ WARNING: geoip-ru-whitelist.srs not found!"
-          fi
-          
-          # geoip-ru.srs
-          if [ -f "rules_temp/geoip-ru.srs" ]; then
-            cp rules_temp/geoip-ru.srs rules/
-            echo "✅ Copied geoip-ru.srs"
-          else
-            echo "❌ WARNING: geoip-ru.srs not found!"
-          fi
-          
-          # geoip-ru-blocked.srs
-          if [ -f "rules_temp/geoip-ru-blocked.srs" ]; then
-            cp rules_temp/geoip-ru-blocked.srs rules/
-            echo "✅ Copied geoip-ru-blocked.srs"
-          else
-            echo "❌ WARNING: geoip-ru-blocked.srs not found!"
-          fi
-          
-          # geosite-ru-blocked-all.srs
-          if [ -f "rules_temp/geosite-ru-blocked-all.srs" ]; then
-            cp rules_temp/geosite-ru-blocked-all.srs rules/
-            echo "✅ Copied geosite-ru-blocked-all.srs"
-          elif [ -f "rules_temp/geosite-ru-blocked.srs" ]; then
-            # Если есть geosite-ru-blocked.srs, переименовываем
-            cp rules_temp/geosite-ru-blocked.srs rules/geosite-ru-blocked-all.srs
-            echo "✅ Renamed geosite-ru-blocked.srs → geosite-ru-blocked-all.srs"
-          else
-            echo "❌ WARNING: geosite-ru-blocked-all.srs not found!"
-          fi
-          
-          # Удаляем временную папку
-          rm -rf rules_temp
-     
-      - name: Verify final files
-        run: |
-          echo "=== FINAL FILES IN rules/ ==="
-          ls -la rules/
-          
-          # Проверяем, что все 4 файла на месте
-          EXPECTED_FILES=("geoip-ru-whitelist.srs" "geoip-ru.srs" "geoip-ru-blocked.srs" "geosite-ru-blocked-all.srs")
-          for file in "${EXPECTED_FILES[@]}"; do
-            if [ -f "rules/$file" ]; then
-              echo "✅ $file exists ($(stat -c%s rules/$file) bytes)"
-            else
-              echo "❌ $file MISSING!"
-              exit 1
-            fi
+          # Удаляем всё, кроме 4 нужных файлов
+          cd rules
+          for f in *.srs; do
+            case "$f" in
+              "geoip-ru-whitelist.srs"|"geoip-ru.srs"|"geoip-ru-blocked.srs"|"geosite-ru-blocked-all.srs")
+                echo "Keeping $f"
+                ;;
+              *)
+                echo "Removing $f"
+                rm -f "$f"
+                ;;
+            esac
           done
+          cd ..
+          
+          # Показываем результат
+          ls -la rules/
      
-      - name: Pull latest changes
-        run: git pull origin master --rebase || true
-     
-      - name: Commit and push
+      - name: Push to repository
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add rules/
-          
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update rules: geoip-ru-whitelist.srs, geoip-ru.srs, geoip-ru-blocked.srs, geosite-ru-blocked-all.srs"
-            git pull origin master --rebase
-            git push origin master
-          fi
+          git commit -m "Update rules $(date +'%Y-%m-%d')" || exit 0
+          git push origin master --force
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
