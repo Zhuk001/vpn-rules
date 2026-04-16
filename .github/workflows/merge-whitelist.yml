@@ -1,9 +1,9 @@
-name: Merge Whitelist
+name: Merge ALL Whitelists
 
 on:
   schedule:
-    - cron: '0 */12 * * *'  # Каждые 12 часов
-  workflow_dispatch:          # Ручной запуск
+    - cron: '0 * * * *'  # Каждый час
+  workflow_dispatch:
 
 jobs:
   merge:
@@ -13,32 +13,104 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download and merge whitelists
-        run: |
-          # Скачиваем три источника
-          curl -s -H "Cache-Control: no-cache" -o source1.txt "https://raw.githubusercontent.com/hxehex/russia-mobile-internet-whitelist/refs/heads/main/whitelist.txt"
-          curl -s -H "Cache-Control: no-cache" -o source2.csv "https://raw.githubusercontent.com/chebur-net/russia-mobile-whitelist/refs/heads/main/moscow-tele2/whitelist.csv"
-          curl -s -H "Cache-Control: no-cache" -o source3.csv "https://raw.githubusercontent.com/chebur-net/russia-mobile-whitelist/refs/heads/main/spb-tele2/whitelist.csv"
-          
-          # Объединяем, убираем пустые строки, комментарии, сортируем и удаляем дубликаты
-          cat source1.txt source2.csv source3.csv \
-            | grep -v '^#' \
-            | grep -v '^$' \
-            | sed 's/\r$//' \
-            | sort -u \
-            > whitelist.txt
-          
-          # Очистка
-          rm source1.txt source2.csv source3.csv
-          
-          echo "Объединено строк: $(wc -l < whitelist.txt)"
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Commit and push if changed
+      - name: Download and parse all sources
+        run: |
+          python3 << 'EOF'
+          import urllib.request
+          import re
+          import ipaddress
+          
+          DOMAINS = set()
+          CIDRS = set()
+          
+          sources = [
+              # Домены
+              ("https://raw.githubusercontent.com/hxehex/russia-mobile-internet-whitelist/refs/heads/main/whitelist.txt", "domain"),
+              ("https://raw.githubusercontent.com/kort0881/russia-whitelist/refs/heads/main/whitelist.txt", "domain_port"),
+              ("https://raw.githubusercontent.com/De1ta01/adguard-russian-gov-whitelist/refs/heads/main/whitelist.txt", "domain"),
+              ("https://raw.githubusercontent.com/Zhuk001/vpn-rules/refs/heads/master/whitelist.txt", "mixed"),
+              # IP-сети
+              ("https://raw.githubusercontent.com/hxehex/russia-mobile-internet-whitelist/refs/heads/main/ipwhitelist.txt", "cidr"),
+              ("https://raw.githubusercontent.com/jsxta/whitelist-russia/refs/heads/master/source/config/cidrwhitelist.txt", "cidr"),
+              ("https://raw.githubusercontent.com/chebur-net/russia-mobile-whitelist/refs/heads/main/moscow-tele2/whitelist.csv", "csv"),
+              ("https://raw.githubusercontent.com/chebur-net/russia-mobile-whitelist/refs/heads/main/spb-tele2/whitelist.csv", "csv"),
+          ]
+          
+          for url, ftype in sources:
+              try:
+                  print(f"Processing: {url}")
+                  req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      content = response.read().decode('utf-8', errors='ignore')
+                  
+                  for line in content.splitlines():
+                      line = line.strip()
+                      if not line or line.startswith('#'):
+                          continue
+                      
+                      if ftype == "cidr":
+                          if '/' in line:
+                              CIDRS.add(line)
+                      
+                      elif ftype == "domain":
+                          if '.' in line and not '/' in line:
+                              DOMAINS.add(line)
+                      
+                      elif ftype == "domain_port":
+                          if ':' in line:
+                              domain = line.split(':')[0]
+                              if '.' in domain:
+                                  DOMAINS.add(domain)
+                          elif '.' in line:
+                              DOMAINS.add(line)
+                      
+                      elif ftype == "csv":
+                          parts = line.split(',')
+                          for part in parts:
+                              part = part.strip()
+                              if '/' in part:
+                                  CIDRS.add(part)
+                              elif '.' in part and not '/' in part:
+                                  DOMAINS.add(part)
+                      
+                      elif ftype == "mixed":
+                          if '/' in line:
+                              CIDRS.add(line)
+                          elif ',' in line:
+                              for part in line.split(','):
+                                  part = part.strip()
+                                  if '/' in part:
+                                      CIDRS.add(part)
+                                  elif '.' in part:
+                                      DOMAINS.add(part)
+                          elif '.' in line:
+                              DOMAINS.add(line)
+                          
+              except Exception as e:
+                  print(f"Error: {url} - {e}")
+          
+          # Сортируем и сохраняем
+          with open("whitelist-domains.txt", "w") as f:
+              for d in sorted(DOMAINS):
+                  f.write(d + "\n")
+          
+          with open("whitelist-ips.txt", "w") as f:
+              for c in sorted(CIDRS):
+                  f.write(c + "\n")
+          
+          print(f"✅ Доменов: {len(DOMAINS)}")
+          print(f"✅ IP-сетей: {len(CIDRS)}")
+          EOF
+
+      - name: Commit and push
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add whitelist.txt
-          git diff --staged --quiet || git commit -m "Auto merge whitelist $(date +'%Y-%m-%d %H:%M:%S')"
+          git add whitelist-domains.txt whitelist-ips.txt
+          git diff --staged --quiet || git commit -m "Auto merge whitelists $(date +'%Y-%m-%d %H:%M:%S')"
           git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
