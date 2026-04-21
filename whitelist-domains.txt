@@ -141,6 +141,7 @@ agent.mail.ru
 aif.ru
 akashi.vk-portal.net
 alfa-bank.ru
+alfa-mobile.alfabank.ru
 alfabank.ru
 alice.yandex.ru
 alpha3.minigames.mail.ru
