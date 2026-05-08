@@ -9,15 +9,14 @@ $geositeBase = "https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rule
 
 # Route intent:
 # Direct: ru-whitelist, ru, yandex
-# Proxy: ru-blocked, ru-blocked-community + selected providers
+# Proxy: ru-blocked, ru-blocked-community + selected providers/social/video
 
 $directGeoip = @('ru-whitelist','ru','yandex')
-$proxyGeoip$proxyGeoip = @('ru-blocked','ru-blocked-community','cloudflare','cloudfront','ddos-guard','facebook','fastly','google','netflix','telegram','tor','twitter','re-filter','xk','youtube','tiktok','instagram','whatsapp')
+$proxyGeoip = @('ru-blocked','ru-blocked-community','cloudflare','cloudfront','ddos-guard','facebook','fastly','google','netflix','telegram','tor','twitter','re-filter','xk','youtube','tiktok','instagram','whatsapp')
 
 # Geosite names that actually exist in sing-box geosite repo.
-# ru direct is represented by category-ru, blocked by ru-blocked.
 $directGeosite = @('yandex','category-ru')
-$proxyGeosite$proxyGeosite = @('ru-blocked','cloudflare','facebook','fastly','google','netflix','telegram','tor','twitter','youtube','tiktok','instagram','whatsapp','meta')
+$proxyGeosite = @('ru-blocked','cloudflare','facebook','fastly','google','netflix','telegram','tor','twitter','youtube','tiktok','instagram','whatsapp','meta')
 
 $directGeoipDir = Join-Path $PSScriptRoot '..\\rules\\Direct\\geoip'
 $directGeositeDir = Join-Path $PSScriptRoot '..\\rules\\Direct\\geosite'
@@ -60,7 +59,7 @@ $manifest = [ordered]@{
   generated_at_utc = (Get-Date).ToUniversalTime().ToString('o')
   intent = [ordered]@{
     direct = 'ru-whitelist, ru, yandex + geosite category-ru/yandex'
-    proxy = 'ru-blocked, ru-blocked-community + selected providers'
+    proxy = 'ru-blocked, ru-blocked-community + selected providers/social/video'
     fallback = 'direct'
   }
   direct = [ordered]@{
@@ -75,4 +74,3 @@ $manifest = [ordered]@{
 
 $manifest | ConvertTo-Json -Depth 8 | Out-File (Join-Path $PSScriptRoot '..\\rules\\manifest.json') -Encoding utf8
 Write-Host 'Manifest updated.'
-

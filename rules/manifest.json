@@ -2,10 +2,10 @@
     "source_ref":  "release",
     "source_geoip":  "runetfreedom/russia-blocked-geoip/release/srs",
     "source_geosite":  "runetfreedom/russia-v2ray-rules-dat/release/sing-box/rule-set-geosite",
-    "generated_at_utc":  "2026-05-08T01:59:23.2515729Z",
+    "generated_at_utc":  "2026-05-08T02:01:42.7936237Z",
     "intent":  {
                    "direct":  "ru-whitelist, ru, yandex + geosite category-ru/yandex",
-                   "proxy":  "ru-blocked, ru-blocked-community + selected providers",
+                   "proxy":  "ru-blocked, ru-blocked-community + selected providers/social/video",
                    "fallback":  "direct"
                },
     "direct":  {
@@ -41,11 +41,16 @@
                                   "geosite-facebook.srs",
                                   "geosite-fastly.srs",
                                   "geosite-google.srs",
+                                  "geosite-instagram.srs",
+                                  "geosite-meta.srs",
                                   "geosite-netflix.srs",
                                   "geosite-ru-blocked.srs",
                                   "geosite-telegram.srs",
+                                  "geosite-tiktok.srs",
                                   "geosite-tor.srs",
-                                  "geosite-twitter.srs"
+                                  "geosite-twitter.srs",
+                                  "geosite-whatsapp.srs",
+                                  "geosite-youtube.srs"
                               ]
               }
 }
