@@ -1,0 +1,51 @@
+﻿{
+    "source_ref":  "release",
+    "source_geoip":  "runetfreedom/russia-blocked-geoip/release/srs",
+    "source_geosite":  "runetfreedom/russia-v2ray-rules-dat/release/sing-box/rule-set-geosite",
+    "generated_at_utc":  "2026-05-08T01:59:23.2515729Z",
+    "intent":  {
+                   "direct":  "ru-whitelist, ru, yandex + geosite category-ru/yandex",
+                   "proxy":  "ru-blocked, ru-blocked-community + selected providers",
+                   "fallback":  "direct"
+               },
+    "direct":  {
+                   "geoip":  [
+                                 "ru.srs",
+                                 "ru-whitelist.srs",
+                                 "yandex.srs"
+                             ],
+                   "geosite":  [
+                                   "geosite-category-ru.srs",
+                                   "geosite-yandex.srs"
+                               ]
+               },
+    "proxy":  {
+                  "geoip":  [
+                                "cloudflare.srs",
+                                "cloudfront.srs",
+                                "ddos-guard.srs",
+                                "facebook.srs",
+                                "fastly.srs",
+                                "google.srs",
+                                "netflix.srs",
+                                "re-filter.srs",
+                                "ru-blocked.srs",
+                                "ru-blocked-community.srs",
+                                "telegram.srs",
+                                "tor.srs",
+                                "twitter.srs",
+                                "xk.srs"
+                            ],
+                  "geosite":  [
+                                  "geosite-cloudflare.srs",
+                                  "geosite-facebook.srs",
+                                  "geosite-fastly.srs",
+                                  "geosite-google.srs",
+                                  "geosite-netflix.srs",
+                                  "geosite-ru-blocked.srs",
+                                  "geosite-telegram.srs",
+                                  "geosite-tor.srs",
+                                  "geosite-twitter.srs"
+                              ]
+              }
+}
