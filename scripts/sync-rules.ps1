@@ -12,12 +12,12 @@ $geositeBase = "https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rule
 # Proxy: ru-blocked, ru-blocked-community + selected providers
 
 $directGeoip = @('ru-whitelist','ru','yandex')
-$proxyGeoip = @('ru-blocked','ru-blocked-community','cloudflare','cloudfront','ddos-guard','facebook','fastly','google','netflix','telegram','tor','twitter','re-filter','xk')
+$proxyGeoip$proxyGeoip = @('ru-blocked','ru-blocked-community','cloudflare','cloudfront','ddos-guard','facebook','fastly','google','netflix','telegram','tor','twitter','re-filter','xk','youtube','tiktok','instagram','whatsapp')
 
 # Geosite names that actually exist in sing-box geosite repo.
 # ru direct is represented by category-ru, blocked by ru-blocked.
 $directGeosite = @('yandex','category-ru')
-$proxyGeosite = @('ru-blocked','cloudflare','facebook','fastly','google','netflix','telegram','tor','twitter')
+$proxyGeosite$proxyGeosite = @('ru-blocked','cloudflare','facebook','fastly','google','netflix','telegram','tor','twitter','youtube','tiktok','instagram','whatsapp','meta')
 
 $directGeoipDir = Join-Path $PSScriptRoot '..\\rules\\Direct\\geoip'
 $directGeositeDir = Join-Path $PSScriptRoot '..\\rules\\Direct\\geosite'
@@ -75,3 +75,4 @@ $manifest = [ordered]@{
 
 $manifest | ConvertTo-Json -Depth 8 | Out-File (Join-Path $PSScriptRoot '..\\rules\\manifest.json') -Encoding utf8
 Write-Host 'Manifest updated.'
+
