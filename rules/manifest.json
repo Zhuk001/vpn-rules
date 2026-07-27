@@ -2,7 +2,7 @@
   "source_ref": "release",
   "source_geoip": "runetfreedom/russia-blocked-geoip/release/srs",
   "source_geosite": "runetfreedom/russia-v2ray-rules-dat/release/sing-box/rule-set-geosite",
-  "generated_at_utc": "2026-07-26T20:56:59.6406919Z",
+  "generated_at_utc": "2026-07-27T02:51:54.1850570Z",
   "intent": {
     "direct": "ru-whitelist, ru, yandex + geosite category-ru/yandex",
     "proxy": "ru-blocked, ru-blocked-community + selected providers/social/video",
